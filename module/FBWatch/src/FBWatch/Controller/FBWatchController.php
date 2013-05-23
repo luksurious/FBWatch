@@ -3,6 +3,8 @@ namespace FBWatch\Controller;
 
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\View\Model\ViewModel;
+use Zend\Session\Container;
+use FBWatch\Model\UserDataGatherer;
 use \Facebook;
 
 class FBWatchController extends AbstractActionController
@@ -19,18 +21,26 @@ class FBWatchController extends AbstractActionController
         ));
     }
     
+    private function assertLoggedIn()
+    {
+        $container = new Container('fbwatch');
+        
+        if (empty($container->authCode)) {
+            $code = $this->params()->fromQuery('code');
+            if (empty($code)) {
+                $user = $this->facebook->getUser();
+                
+                if (0 == $user) {
+                    return $this->redirect()->toRoute('fbwatch', array('action' => 'login'));
+                }
+            }
+            $container->authCode = $code;
+        }
+    }
+    
     public function indexAction()
     {
-        $user = $this->facebook->getUser();
-        
-        $code = $this->params()->fromQuery('code');
-        if (0 == $user && empty($code)) {
-            return $this->forward()->dispatch('FBWatch\Controller\FBWatch', array('action' => 'login'));
-        }
-        
-        return new ViewModel(array(
-            'user' => $user
-        ));
+        $this->assertLoggedIn();
     }
 
     public function loginAction()
@@ -47,5 +57,15 @@ class FBWatchController extends AbstractActionController
 
     public function parseProfileAction()
     {
+        $this->assertLoggedIn();
+        
+        $searchFor = $this->params()->fromQuery('username');
+        
+        if ($searchFor) {
+            (new UserDataGatherer($searchFor, $this->facebook))
+                    ->startFetch();
+        } else {
+            print "No username provided";
+        }
     }
 }

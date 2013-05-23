@@ -31,7 +31,7 @@ return array(
                         'action'     => 'index',
                     ),
                 ),
-            ),
+            )
         ),
     ),
 
