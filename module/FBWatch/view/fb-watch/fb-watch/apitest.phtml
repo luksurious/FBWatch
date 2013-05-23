@@ -1,0 +1,9 @@
+<h1>Run a query on the FB Graph API</h1>
+<?php if (!empty($query)): ?>
+    Query run: <?=$query;?><br>
+    Result: <?=$result;?><br>
+<?php endif; ?>
+<form action="" method="GET">
+    Query: <input type="text" name="query"><br>
+    <button class="btn">Run</button>
+</form>

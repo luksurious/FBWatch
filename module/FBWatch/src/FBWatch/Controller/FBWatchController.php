@@ -24,18 +24,23 @@ class FBWatchController extends AbstractActionController
     private function assertLoggedIn()
     {
         $container = new Container('fbwatch');
+        $code = $this->params()->fromQuery('code');
         
-        if (empty($container->authCode)) {
-            $code = $this->params()->fromQuery('code');
-            if (empty($code)) {
-                $user = $this->facebook->getUser();
-                
-                if (0 == $user) {
-                    return $this->redirect()->toRoute('fbwatch', array('action' => 'login'));
-                }
+        if (empty($container->authCode) && empty($code)) {
+            $user = $this->facebook->getUser();
+
+            if (0 == $user) {
+                return $this->redirect()->toRoute('fbwatch', array('action' => 'login'));
             }
-            $container->authCode = $code;
         }
+        
+        if (!empty($code)) {
+            $container->authCode = $this->facebook->getAccessToken();
+        }
+        
+        $this->facebook->setAccessToken($container->authCode);
+        
+        echo $this->facebook->getUser();
     }
     
     public function indexAction()
@@ -45,13 +50,12 @@ class FBWatchController extends AbstractActionController
 
     public function loginAction()
     {
-        $_SESSION['state'] = md5(uniqid(rand(), TRUE)); // CSRF protection
-        $my_url = "http://fbwatch.lukas-brueckner.de/";
+        if (0 != $this->facebook->getUser()) {
+            $this->redirect()->toRoute('fbwatch');
+        }
         
         return new ViewModel(array(
-            'login_url' => "https://www.facebook.com/dialog/oauth?client_id=" 
-                . $this->facebook->getAppId() . "&redirect_uri=" . urlencode($my_url) 
-                . "&state=" . $_SESSION['state'] . "&scope=user_location"
+            'login_url' => $this->facebook->getLoginUrl()
         ));
     }
 
@@ -62,10 +66,30 @@ class FBWatchController extends AbstractActionController
         $searchFor = $this->params()->fromQuery('username');
         
         if ($searchFor) {
-            (new UserDataGatherer($searchFor, $this->facebook))
-                    ->startFetch();
+            $dataGatherer = new UserDataGatherer($searchFor, $this->facebook);
+            $dataGatherer->startFetch();
         } else {
             print "No username provided";
         }
+    }
+    
+    public function apitestAction() {
+        $this->assertLoggedIn();
+        
+        $query = $this->params()->fromQuery('query');
+        $result = '';
+        
+        if (!empty($query)) {
+            try {
+                $result = json_encode($this->facebook->api($query));
+            } catch (\FacebookApiException $e) {
+                $result = $e->getMessage() . json_encode($e->getResult());
+            }
+        }
+        
+        return new ViewModel(array(
+            'result' => $result,
+            'query' => $query
+        ));
     }
 }

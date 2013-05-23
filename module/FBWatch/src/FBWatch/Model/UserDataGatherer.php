@@ -15,7 +15,7 @@ class UserDataGatherer {
     public function startFetch() {
         try {
             $basic_data = $this->facebook->api('/' . $this->username);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             print $e . "1<br>";
         }
         
@@ -70,44 +70,49 @@ class UserDataGatherer {
                     fclose($handle);
                 }
             }
-        } catch (Exception $e) {
-            print $e . "4<br>";
+        } catch (\Exception $e) {
+            print $e . ' in ' . __METHOD__;
         }
     }
     
     private function fetchFeed() {
+        $feed = array();
+        $paging = array('limit' => '', 'until' => '');
+        $callHistory = array();
+        
         try {
-            $str = $this->facebook->api('/' . $this->username . '/feed');
-        } catch (Exception $e) {
+            while (true) {
+                $fbGraphCall = '/' . $this->username . '/feed?' 
+                        . (empty($paging['limit']) ? '' : 'limit=' . $paging['limit'] . '&') 
+                        . (empty($paging['until']) ? '' : 'until=' . $paging['until']);
+                $result = $this->facebook->api($fbGraphCall);
+                
+                if (!array_key_exists('paging', $result) 
+                        || in_array($fbGraphCall, $callHistory)) {
+                    break;
+                }
+                
+                // TODO possibly make more robust
+                $callHistory[] = $fbGraphCall;
+                
+                $feed[] = $result;
+                
+                $paging = array('limit' => '', 'until' => '');
+                $nextQuery = substr($result['paging']['next'], strpos($result['paging']['next'], '?') + 1);
+                parse_str($nextQuery, $paging);
+            }
+        } catch (\FacebookApiException $e) {
             print $e . "3<br>";
         }
-        
-        $feed[] = $str;
+            
+        var_dump($callHistory);
 
-        $counter = 0;
-
-        $nextpage = $str['paging']['next'];
-        parse_str($nextpage);
-        
-        try {
-            while ($until != null) {
-                $str = $this->facebook->api('/' . $this->username . '/feed?limit=' . $limit . '&until=' . $until);
-                $feed[] = $str;
-                $until = null;
-
-                $nextpage = $str['paging']['next'];
-                parse_str($nextpage);
+        if (count($feed) > 0) {
+            for ($i = 0; $i < sizeof($feed); $i = $i + 1) {
+                $handle = fopen($this->savePath . "feed$i.json", 'w+');
+                fwrite($handle, json_encode($feed[$i]));
+                fclose($handle);
             }
-
-            if (count($feed) > 0) {
-                for ($i = 0; $i < sizeof($feed); $i = $i + 1) {
-                    $handle = fopen($this->savePath . "feed$i.json", 'w+');
-                    fwrite($handle, json_encode($feed[$i]));
-                    fclose($handle);
-                }
-            }
-        } catch (Exception $e) {
-            print $e . "3<br>";
         }
     }
     
