@@ -1,7 +1,11 @@
 <h1>Run a query on the FB Graph API</h1>
+<div>
+    Logged in user: <?=$this->facebook->getUser();?><br>
+    Access Token: <?=$this->facebook->getAccessToken();?><br>
+</div>
 <?php if (!empty($query)): ?>
     Query run: <?=$query;?><br>
-    Result: <?=$result;?><br>
+    Result: <pre><?php var_dump($result); ?></pre>
 <?php endif; ?>
 <form action="" method="GET">
     Query: <input type="text" name="query"><br>

@@ -16,6 +16,12 @@
     <dd>
         <pre class="prettyprint linenums"><?php echo $this->exception->getMessage() ?></pre>
     </dd>
+    <?php if ($this->exception instanceof FacebookApiException): ?>
+    <dt><?php echo $this->translate('Message') ?>:</dt>
+    <dd>
+        <pre class="prettyprint linenums"><?php var_dump($this->exception->getResult()) ?></pre>
+    </dd>
+    <?php endif; ?>
     <dt><?php echo $this->translate('Stack trace') ?>:</dt>
     <dd>
         <pre class="prettyprint linenums"><?php echo $this->exception->getTraceAsString() ?></pre>

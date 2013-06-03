@@ -19,6 +19,7 @@ class FBWatchController extends AbstractActionController
 		'secret' => '9383f8e11829a80f740d43a995172ef1',
 		'cookie' => true
         ));
+        Facebook::$CURL_OPTS[CURLOPT_CONNECTTIMEOUT] = 30;
     }
     
     private function assertLoggedIn()
@@ -35,12 +36,9 @@ class FBWatchController extends AbstractActionController
         }
         
         if (!empty($code)) {
-            $container->authCode = $this->facebook->getAccessToken();
+            $container->authCode = $code;
+            $this->facebook->setAccessToken($container->authCode);
         }
-        
-        $this->facebook->setAccessToken($container->authCode);
-        
-        echo $this->facebook->getUser();
     }
     
     public function indexAction()
@@ -50,12 +48,15 @@ class FBWatchController extends AbstractActionController
 
     public function loginAction()
     {
-        if (0 != $this->facebook->getUser()) {
-            $this->redirect()->toRoute('fbwatch');
-        }
+//        if (0 != $this->facebook->getUser()) {
+//            $this->redirect()->toRoute('fbwatch');
+//        }
         
         return new ViewModel(array(
-            'login_url' => $this->facebook->getLoginUrl()
+            'login_url' => $this->facebook->getLoginUrl(array(
+                'redirect_uri' => 'http://fbwatch.lukas-brueckner.de',
+                'scope' => 'email, user_about_me, user_groups, user_interests, user_subscriptions, user_status, read_stream'
+            ))
         ));
     }
 
@@ -67,7 +68,22 @@ class FBWatchController extends AbstractActionController
         
         if ($searchFor) {
             $dataGatherer = new UserDataGatherer($searchFor, $this->facebook);
-            $dataGatherer->startFetch();
+            
+            try {
+                $result = $dataGatherer->startFetch();
+            } catch (\FacebookApiException $e) {
+                $errorResult = $e->getResult();
+                if (array_key_exists('code', $errorResult) 
+                        && 102 == $errorResult["error"]["code"]) {
+                    return $this->redirect()->toRoute('fbwatch', array('action' => 'login'));
+                }
+                throw $e;
+            }
+            
+            return new ViewModel(array(
+                'result' => $result,
+                'username' => $searchFor
+            ));
         } else {
             print "No username provided";
         }
@@ -81,7 +97,7 @@ class FBWatchController extends AbstractActionController
         
         if (!empty($query)) {
             try {
-                $result = json_encode($this->facebook->api($query));
+                $result = $this->facebook->api($query);
             } catch (\FacebookApiException $e) {
                 $result = $e->getMessage() . json_encode($e->getResult());
             }
@@ -89,7 +105,8 @@ class FBWatchController extends AbstractActionController
         
         return new ViewModel(array(
             'result' => $result,
-            'query' => $query
+            'query' => $query,
+            'facebook' => $this->facebook
         ));
     }
 }

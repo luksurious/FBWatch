@@ -13,8 +13,9 @@ class UserDataGatherer {
     }
     
     public function startFetch() {
+        $basicDataQuery = '/' . $this->username;
         try {
-            $basic_data = $this->facebook->api('/' . $this->username);
+            $basic_data = $this->facebook->api($basicDataQuery);
         } catch (\Exception $e) {
             print $e . "1<br>";
         }
@@ -28,51 +29,66 @@ class UserDataGatherer {
 
         $this->saveBasicData($basic_data);
 
-        $this->fetchFeed();
-
-        $this->fetchStatus();
+        return array(
+            'basicData' => array(
+                'query' => $basicDataQuery,
+                'data' => $basic_data
+            ),
+            'feed' => $this->fetchFeed(),
+            'statuses' => $this->fetchStatus()
+        );
     }
     
     
     private function fetchStatus() {
-        try {
-            $str = $this->facebook->api('/' . $this->username . '?fields=statuses');
-            $status[] = $str['statuses'];
-
-            $counter = 0;
-
-            $nextpage = $str['statuses']['paging']['next'];
-            parse_str($nextpage);
-
-            print "<br>Next page: $nextpage<br>";
-            $lastUntil = null;
-
-            while ($until != null && $lastUntil != $until) {
-
-                if ($limit == null) {
-                    $limit = 25;
-                }
-
-                $str = $this->facebook->api('/' . $this->username . '/statuses?limit=' . $limit . '&until=' . $until);
-                $status[] = $str;
-                $lastUntil = $until;
-                $until = null;
-
-                $nextpage = $str['paging']['next'];
-                print "<br>Next page: $nextpage<br>";
-                parse_str($nextpage);
-            }
-
-            if (count($status) > 0) {
-                for ($i = 0; $i < sizeof($status); $i = $i + 1) {
-                    $handle = fopen($this->savePath . "status$i.json", 'w+');
-                    fwrite($handle, json_encode($status[$i]));
-                    fclose($handle);
-                }
-            }
-        } catch (\Exception $e) {
-            print $e . ' in ' . __METHOD__;
+        $statusQuery = '/' . $this->username . '?fields=statuses';
+        $str = $this->facebook->api($statusQuery);
+        
+        if (!array_key_exists('statuses', $str)) {
+            return array(
+                'query' => $statusQuery,
+                'statuses' => null
+            );
         }
+        
+        $status[] = $str['statuses'];
+
+        $counter = 0;
+
+        $nextpage = $str['statuses']['paging']['next'];
+        parse_str($nextpage);
+
+        print "<br>Next page: $nextpage<br>";
+        $lastUntil = null;
+
+        while ($until != null && $lastUntil != $until) {
+
+            if ($limit == null) {
+                $limit = 25;
+            }
+
+            $str = $this->facebook->api('/' . $this->username . '/statuses?limit=' . $limit . '&until=' . $until);
+            $status[] = $str;
+            $lastUntil = $until;
+            $until = null;
+
+            $nextpage = $str['paging']['next'];
+            print "<br>Next page: $nextpage<br>";
+            parse_str($nextpage);
+        }
+
+        if (count($status) > 0) {
+            for ($i = 0; $i < sizeof($status); $i = $i + 1) {
+                $handle = fopen($this->savePath . "status$i.json", 'w+');
+                fwrite($handle, json_encode($status[$i]));
+                fclose($handle);
+            }
+        }
+        
+        return array(
+            'query' => $statusQuery,
+            'statuses' => $status
+        );
     }
     
     private function fetchFeed() {
@@ -80,32 +96,29 @@ class UserDataGatherer {
         $paging = array('limit' => '', 'until' => '');
         $callHistory = array();
         
-        try {
-            while (true) {
-                $fbGraphCall = '/' . $this->username . '/feed?' 
-                        . (empty($paging['limit']) ? '' : 'limit=' . $paging['limit'] . '&') 
-                        . (empty($paging['until']) ? '' : 'until=' . $paging['until']);
-                $result = $this->facebook->api($fbGraphCall);
-                
-                if (!array_key_exists('paging', $result) 
-                        || in_array($fbGraphCall, $callHistory)) {
-                    break;
-                }
-                
-                // TODO possibly make more robust
-                $callHistory[] = $fbGraphCall;
-                
-                $feed[] = $result;
-                
-                $paging = array('limit' => '', 'until' => '');
-                $nextQuery = substr($result['paging']['next'], strpos($result['paging']['next'], '?') + 1);
-                parse_str($nextQuery, $paging);
-            }
-        } catch (\FacebookApiException $e) {
-            print $e . "3<br>";
-        }
+        while (true) {
+            $fbGraphCall = '/' . $this->username . '/feed?' 
+                    . (empty($paging['limit']) ? '' : 'limit=' . $paging['limit'] . '&') 
+                    . (empty($paging['until']) ? '' : 'until=' . $paging['until']);
             
-        var_dump($callHistory);
+            // TODO possibly make more robust
+            if (in_array($fbGraphCall, $callHistory)) {
+                break;
+            }
+            
+            $result = $this->facebook->api($fbGraphCall);
+            $callHistory[] = $fbGraphCall;
+            
+            if (!array_key_exists('paging', $result)) {
+                break;
+            }
+
+            $feed[] = $result;
+
+            $paging = array('limit' => '', 'until' => '');
+            $nextQuery = substr($result['paging']['next'], strpos($result['paging']['next'], '?') + 1);
+            parse_str($nextQuery, $paging);
+        }
 
         if (count($feed) > 0) {
             for ($i = 0; $i < sizeof($feed); $i = $i + 1) {
@@ -114,6 +127,11 @@ class UserDataGatherer {
                 fclose($handle);
             }
         }
+        
+        return array(
+            'feed' => $feed,
+            'callHistory' => $callHistory
+        );
     }
     
     private function saveBasicData($basic_data) {
