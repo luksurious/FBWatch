@@ -31,17 +31,16 @@ class UserDataGatherer {
                 'query' => $basicDataQuery,
                 'data' => $basicData
             ),
-            'feed' => $this->fetchFeed()
+            'feed' => $this->fetchData('feed')
 //          , 'statuses' => $this->fetchStatus() // it seems that every status is also in the feed
         );
     }
     
-    
-    private function fetchStatus() 
+    private function fetchData($connection)
     {
-        $status = array();
+        $data = array();
         $callHistory = array();
-        $fbGraphCall = '/' . $this->username . '/statuses';
+        $fbGraphCall = "/{$this->username}/{$connection}";
         
         while (true) {
             // TODO possibly make more robust
@@ -53,126 +52,62 @@ class UserDataGatherer {
             $result = $this->facebook->api($fbGraphCall);
             $callHistory[] = $fbGraphCall;
             
-            if ($this->statusResultIsEmpty($result)) {
+            if ($this->resultIsEmpty($result)) {
                 break;
             }
 
-            $status[] = $result;
+            $data[] = $result;
             
-            $fbGraphCall = $this->createNextStatusQuery($result['paging']['next']);
+            $fbGraphCall = $this->createNextQuery(
+                    $result['paging']['next'], 
+                    $connection
+            );
         }
 
-        $this->saveStatuses($status);
+        $this->saveData($data, $connection);
         
         return array(
-            'callHistory' => $callHistory,
-            'statuses' => $status
-        );
-    }
-    
-    private function saveStatuses($status) 
-    {
-    
-        if (count($status) == 0) {
-            return;
-        }
-        
-        for ($i = 0; $i < sizeof($status); $i = $i + 1) {
-            $handle = fopen($this->savePath . "status$i.json", 'w+');
-            fwrite($handle, json_encode($status[$i]));
-            fclose($handle);
-        }
-    }
-    
-    private function statusResultIsEmpty($result) 
-    {
-        // if no paging array is present the return object is 
-        // presumably empty
-        return !array_key_exists('paging', $result);
-    }
-    
-    private function createNextStatusQuery($next) 
-    {
-        $params = array('limit' => '', 'until' => '');
-        
-        $nextQuery = substr($next, strpos($next, '?') + 1);
-        parse_str($nextQuery, $params);
-        
-        return '/' . $this->username . '/statuses?' 
-                . (empty($params['limit']) ? '' : 'limit=' . $params['limit'] . '&') 
-                . (empty($params['until']) ? '' : 'until=' . $params['until']);
-        
-    }
-    
-    private function fetchFeed()
-    {
-        $feed = array();
-        $callHistory = array();
-        $fbGraphCall = '/' . $this->username . '/feed';
-        
-        while (true) {
-            // TODO possibly make more robust
-            // if same query was sent before break
-            if (in_array($fbGraphCall, $callHistory)) {
-                break;
-            }
-            
-            $result = $this->facebook->api($fbGraphCall);
-            $callHistory[] = $fbGraphCall;
-            
-            if ($this->feedResultIsEmpty($result)) {
-                break;
-            }
-
-            $feed[] = $result;
-            
-            $fbGraphCall = $this->createNextFeedQuery($result['paging']['next']);
-        }
-
-        $this->saveFeed($feed);
-        
-        return array(
-            'feed' => $feed,
+            'data' => $data,
             'callHistory' => $callHistory
         );
     }
     
-    private function saveFeed($feed) 
+    private function saveData($data, $connection) 
     {    
-        if (count($feed) == 0) {
+        if (count($data) == 0) {
             return;
         }
         
-        for ($i = 0; $i < sizeof($feed); $i = $i + 1) {
-            $handle = fopen($this->savePath . "feed$i.json", 'w+');
-            fwrite($handle, json_encode($feed[$i]));
+        for ($i = 0; $i < sizeof($data); $i = $i + 1) {
+            $handle = fopen("{$this->savePath}{$connection}{$i}.json", 'w+');
+            fwrite($handle, json_encode($data[$i]));
             fclose($handle);
         }
     }
     
-    private function feedResultIsEmpty($result) 
+    private function resultIsEmpty($result) 
     {
         // if no paging array is present the return object is 
         // presumably empty
         return false === array_key_exists('paging', $result);
     }
     
-    private function createNextFeedQuery($next) 
+    private function createNextQuery($next, $connection) 
     {
         $params = array('limit' => '', 'until' => '');
         
         $nextQuery = substr($next, strpos($next, '?') + 1);
         parse_str($nextQuery, $params);
         
-        return '/' . $this->username . '/feed?' 
+        return "/{$this->username}/{$connection}?" 
                 . (empty($params['limit']) ? '' : 'limit=' . $params['limit'] . '&') 
                 . (empty($params['until']) ? '' : 'until=' . $params['until']);
     }
     
-    private function saveBasicData($basic_data) 
+    private function saveBasicData($basicData)
     {
         $handle = fopen($this->savePath . "basicdata.json", 'w+');
-        fwrite($handle, json_encode($basic_data));
+        fwrite($handle, json_encode($basicData));
         fclose($handle);
     }
     
