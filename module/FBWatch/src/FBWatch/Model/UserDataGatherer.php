@@ -40,6 +40,7 @@ class UserDataGatherer {
     {
         $data = array();
         $callHistory = array();
+        $previousLink = '';
         $fbGraphCall = "/{$this->username}/{$connection}";
         
         while (true) {
@@ -55,6 +56,11 @@ class UserDataGatherer {
             if ($this->resultIsEmpty($result)) {
                 break;
             }
+            
+            // save this link so that we can get only updates next time
+            if (empty($previousLink)) {
+                $previousLink = $result['paging']['previous'];
+            }
 
             $data[] = $result;
             
@@ -68,7 +74,8 @@ class UserDataGatherer {
         
         return array(
             'data' => $data,
-            'callHistory' => $callHistory
+            'callHistory' => $callHistory,
+            'previousLink' => $previousLink
         );
     }
     
