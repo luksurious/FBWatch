@@ -48,10 +48,6 @@ class FBWatchController extends AbstractActionController
 
     public function loginAction()
     {
-//        if (0 != $this->facebook->getUser()) {
-//            $this->redirect()->toRoute('fbwatch');
-//        }
-        
         return new ViewModel(array(
             'login_url' => $this->facebook->getLoginUrl(array(
                 'redirect_uri' => 'http://fbwatch.lukas-brueckner.de',
@@ -67,29 +63,35 @@ class FBWatchController extends AbstractActionController
         $searchFor = $this->params()->fromQuery('username');
         
         if ($searchFor) {
-            $dataGatherer = new UserDataGatherer($searchFor, $this->facebook);
-            
-            try {
-                $result = $dataGatherer->startFetch();
-            } catch (\FacebookApiException $e) {
-                $errorResult = $e->getResult();
-                if (array_key_exists('code', $errorResult) 
-                        && 102 == $errorResult["error"]["code"]) {
-                    return $this->redirect()->toRoute('fbwatch', array('action' => 'login'));
-                }
-                throw $e;
-            }
-            
-            return new ViewModel(array(
-                'result' => $result,
-                'username' => $searchFor
-            ));
-        } else {
-            print "No username provided";
+            return $this->runQuery($searchFor);
         }
+        
+        return $this->redirect()->toRoute('fbwatch');
     }
     
-    public function apitestAction() {
+    private function runQuery($searchFor)
+    {
+        $dataGatherer = new UserDataGatherer($searchFor, $this->facebook);
+            
+        try {
+            $result = $dataGatherer->startFetch();
+        } catch (\FacebookApiException $e) {
+            $errorResult = $e->getResult();
+            if (array_key_exists('code', $errorResult) 
+                    && 102 == $errorResult["error"]["code"]) {
+                return $this->redirect()->toRoute('fbwatch', array('action' => 'login'));
+            }
+            throw $e;
+        }
+
+        return new ViewModel(array(
+            'result' => $result,
+            'username' => $searchFor
+        ));
+    }
+    
+    public function apitestAction() 
+    {
         $this->assertLoggedIn();
         
         $query = $this->params()->fromQuery('query');

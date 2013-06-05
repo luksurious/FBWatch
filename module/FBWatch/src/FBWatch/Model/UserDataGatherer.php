@@ -24,16 +24,17 @@ class UserDataGatherer {
 
         $this->initDataFolderFor($basicData['id']);
 
-        $this->saveBasicData($basicData);
-
-        return array(
+        $data = array(
             'basicData' => array(
                 'query' => $basicDataQuery,
                 'data' => $basicData
             ),
             'feed' => $this->fetchData('feed')
-//          , 'statuses' => $this->fetchStatus() // it seems that every status is also in the feed
         );
+        
+        $this->saveData($data);
+        
+        return $data;
     }
     
     private function fetchData($connection)
@@ -69,8 +70,6 @@ class UserDataGatherer {
                     $connection
             );
         }
-
-        $this->saveData($data, $connection);
         
         return array(
             'data' => $data,
@@ -79,17 +78,11 @@ class UserDataGatherer {
         );
     }
     
-    private function saveData($data, $connection) 
-    {    
-        if (count($data) == 0) {
-            return;
-        }
-        
-        for ($i = 0; $i < sizeof($data); $i = $i + 1) {
-            $handle = fopen("{$this->savePath}{$connection}{$i}.json", 'w+');
-            fwrite($handle, json_encode($data[$i]));
-            fclose($handle);
-        }
+    private function saveData($data) 
+    {
+        $handle = fopen("{$this->savePath}combined.json", 'w+');
+        fwrite($handle, json_encode($data));
+        fclose($handle);
     }
     
     private function resultIsEmpty($result) 
@@ -109,13 +102,6 @@ class UserDataGatherer {
         return "/{$this->username}/{$connection}?" 
                 . (empty($params['limit']) ? '' : 'limit=' . $params['limit'] . '&') 
                 . (empty($params['until']) ? '' : 'until=' . $params['until']);
-    }
-    
-    private function saveBasicData($basicData)
-    {
-        $handle = fopen($this->savePath . "basicdata.json", 'w+');
-        fwrite($handle, json_encode($basicData));
-        fclose($handle);
     }
     
     private function initDataFolderFor($userId) 
