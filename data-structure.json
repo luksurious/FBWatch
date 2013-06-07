@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS `feedextension` (
 CREATE TABLE IF NOT EXISTS `resource` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `resourceName` varchar(50) CHARACTER SET latin1 NOT NULL,
-  `facebookId` int(11) DEFAULT NULL,
+  `facebookId` varchar(20) DEFAULT NULL,
   `lastSynced` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL,
   PRIMARY KEY (`id`),

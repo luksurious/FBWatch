@@ -143,7 +143,8 @@ class FBWatchController extends AbstractActionController
     private function syncResource(Resource $resource)
     {
         $result = $this->runQuery($resource->resourceName);
-        $resource->lastSynced = (new \DateTime())->format('Y-m-d G:i:s+T');
+        $now = new \DateTime();
+        $resource->lastSynced = $now->format('Y-m-d G:i:s+T');
         if (empty($resource->facebookId)) {
             $resource->facebookId = $result['basicData']['data']['id'];
         }
