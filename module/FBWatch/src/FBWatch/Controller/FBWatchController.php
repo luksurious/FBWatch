@@ -53,6 +53,10 @@ class FBWatchController extends AbstractActionController
         ));
     }
     
+    /**
+     * 
+     * @return \FBWatch\Model\ResourceTable
+     */
     public function getResourceTable()
     {
         if (!$this->resourceTable) {
@@ -101,17 +105,51 @@ class FBWatchController extends AbstractActionController
         ));
     }
 
-    public function parseProfileAction()
+    public function syncAction()
     {
         $this->assertLoggedIn();
         
-        $searchFor = $this->params()->fromQuery('username');
+        $id = (int) $this->params()->fromRoute('id', 0);
+        if (!$id) {
+            return $this->redirect()->toRoute('fbwatch');
+        }
         
-        if ($searchFor) {
-            return $this->runQuery($searchFor);
+        $resource = $this->getResourceTable()->getResource($id);
+        
+        if ($resource) {
+            $this->syncResource($resource);
+            
+            return new ViewModel(array(
+                'result' => $result,
+                'username' => $resource->resourceName
+            ));
         }
         
         return $this->redirect()->toRoute('fbwatch');
+    }
+    
+    public function syncAllAction()
+    {
+        $this->assertLoggedIn();
+        
+        $resources = $this->getResourceTable()->fetchAll();
+        foreach ($resources as $resource) {
+            $this->syncResource($resource);
+        }
+        
+        return $this->redirect()->toRoute('fbwatch');
+    }
+    
+    private function syncResource(Resource $resource)
+    {
+        $result = $this->runQuery($resource->resourceName);
+        $resource->lastSynced = (new \DateTime())->format('Y-m-d G:i:s+T');
+        if (empty($resource->facebookId)) {
+            $resource->facebookId = $result['basicData']['data']['id'];
+        }
+        $this->getResourceTable()->saveResource($resource);
+        
+        return $result;
     }
     
     private function runQuery($searchFor)
@@ -123,16 +161,13 @@ class FBWatchController extends AbstractActionController
         } catch (\FacebookApiException $e) {
             $errorResult = $e->getResult();
             if (array_key_exists('code', $errorResult) 
-                    && 102 == $errorResult["error"]["code"]) {
+                    && 102 == $errorResult['error']['code']) {
                 return $this->redirect()->toRoute('fbwatch', array('action' => 'login'));
             }
             throw $e;
         }
-
-        return new ViewModel(array(
-            'result' => $result,
-            'username' => $searchFor
-        ));
+        
+        return $result;
     }
     
     public function apitestAction() 

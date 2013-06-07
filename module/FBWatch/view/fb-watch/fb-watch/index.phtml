@@ -13,6 +13,9 @@ $this->headTitle($title);
 </form>
 
 <h2>Current Resources</h2>
+<a href="<?php echo $this->url('fbwatch', array('action' => 'sync-all'));?>">
+    <button class="btn" type="submit">Sync All</button>
+</a>
 <table class="table">
 <tr>
     <th>Name</th>
@@ -29,9 +32,8 @@ $this->headTitle($title);
     <td><?php echo $this->escapeHtml($resource->lastSynced);?></td>
     <td>
         <a href="<?php //echo $this->url('album',
-            //array('action'=>'edit', 'id' => $resource->id));?>">Edit</a>
-        <a href="<?php //echo $this->url('album',
-            //array('action'=>'delete', 'id' => $resource->id));?>">Delete</a>
+            //array('action'=>'edit', 'id' => $resource->id));?>">Stop Syncing</a><br>
+        <a href="<?php echo $this->url('fbwatch', array('action' => 'sync', 'id' => $resource->id));?>">Sync now</a>
     </td>
 </tr>
 <?php endforeach; ?>

@@ -12,12 +12,22 @@ class ResourceTable
         $this->tableGateway = $tableGateway;
     }
 
+    /**
+     * 
+     * @return \Zend\Db\ResultSet\ResultSet
+     */
     public function fetchAll()
     {
         $resultSet = $this->tableGateway->select();
         return $resultSet;
     }
     
+    /**
+     * 
+     * @param int $id
+     * @return Resource
+     * @throws \Exception
+     */
     public function getResource($id)
     {
         $id = (int) $id;
@@ -34,7 +44,8 @@ class ResourceTable
         $data = array(
             'resourceName' => $resource->resourceName,
             'facebookId' => $resource->facebookId,
-            'active' => $resource->active
+            'active' => $resource->active,
+            'lastSynced' => $resource->lastSynced
         );
         
         $id = (int) $resource->id;
