@@ -5,11 +5,14 @@ use Zend\Mvc\Controller\AbstractActionController;
 use Zend\View\Model\ViewModel;
 use Zend\Session\Container;
 use FBWatch\Model\UserDataGatherer;
+use FBWatch\Model\Resource;
 use \Facebook;
 
 class FBWatchController extends AbstractActionController
 {
-    private $facebook;
+    public $facebook;
+    
+    protected $resourceTable;
     
     public function __construct() 
     {    
@@ -44,6 +47,48 @@ class FBWatchController extends AbstractActionController
     public function indexAction()
     {
         $this->assertLoggedIn();
+        
+        return new ViewModel(array(
+            'resources' => $this->getResourceTable()->fetchAll()
+        ));
+    }
+    
+    public function getResourceTable()
+    {
+        if (!$this->resourceTable) {
+            $sm = $this->getServiceLocator();
+            $this->resourceTable = $sm->get('FBWatch\Model\ResourceTable');
+        }
+        return $this->resourceTable;
+    }
+    
+    public function addAction()
+    {
+        $request = $this->getRequest();
+        if ($request->isPost()) {
+            $data = $request->getPost();
+            
+            $resource = new Resource();
+            $resource->resourceName = $this->parseFacebookUrl($data['resource-url']);
+            $resource->active = true;
+            $this->getResourceTable()->saveResource($resource);
+        }
+        // TODO add some message / user feedback
+        
+        return $this->redirect()->toRoute('fbwatch');
+    }
+    
+    private function parseFacebookUrl($url)
+    {
+        $parts = parse_url($url);
+        
+        // the path of the facebook url holds either the unique name or the facebook id
+        $path = substr($parts['path'], 1);
+        $path = explode('/', $path);
+        
+        // if it's a page or group the id is in the last "folder"
+        // otherwise this will just return the unique name
+        return $path[ count($path) - 1];
     }
 
     public function loginAction()
