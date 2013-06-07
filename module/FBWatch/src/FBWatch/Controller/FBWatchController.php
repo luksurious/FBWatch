@@ -117,7 +117,7 @@ class FBWatchController extends AbstractActionController
         $resource = $this->getResourceTable()->getResource($id);
         
         if ($resource) {
-            $this->syncResource($resource);
+            $result = $this->syncResource($resource);
             
             return new ViewModel(array(
                 'result' => $result,
