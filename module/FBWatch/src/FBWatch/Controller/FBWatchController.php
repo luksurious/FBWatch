@@ -15,12 +15,12 @@ class FBWatchController extends AbstractActionController
     protected $resourceTable;
     
     public function __construct() 
-    {    
-        $appId = '558538167531777';
-	$this->facebook = new Facebook(array(
-		'appId'  => $appId,
-		'secret' => '9383f8e11829a80f740d43a995172ef1',
-		'cookie' => true
+    {
+        $config = $this->getServiceLocator()->get('Config');
+        $this->facebook = new Facebook(array(
+            'appId'  => $config['facebook']['appId'],
+            'secret' => $config['facebook']['secret'],
+            'cookie' => true
         ));
         Facebook::$CURL_OPTS[CURLOPT_CONNECTTIMEOUT] = 30;
     }
